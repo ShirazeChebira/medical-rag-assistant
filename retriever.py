@@ -1,44 +1,32 @@
+# This script loads medical documents, splits them into chunks, and stores them in a Chroma vector database.
+
 import os
-from dotenv import load_dotenv
-from langchain_community.vectorstores import FAISS
-from langchain_community.embeddings import OpenAIEmbeddings
-from langchain_community.document_loaders import TextLoader, PyMuPDFLoader, Docx2txtLoader
+from langchain_community.document_loaders import TextLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain_openai import OpenAIEmbeddings
+from langchain_community.vectorstores import Chroma
 
-load_dotenv()
+# Load all .txt documents from the specified directory
+directory = "data/guidelines"
+documents = []
 
-def load_documents(directory="data/guidelines/"):
-    documents = []
-
-    for filename in os.listdir(directory):
-        if not filename.lower().endswith((".txt", ".pdf", ".docx")):
-            continue
-
+for filename in os.listdir(directory):
+    if filename.endswith(".txt"):
         path = os.path.join(directory, filename)
-        ext = filename.lower().split(".")[-1]
+        loader = TextLoader(path)
+        docs = loader.load()
+        documents.extend(docs)
 
-        try:
-            if ext == "txt":
-                loader = TextLoader(path)
-            elif ext == "pdf":
-                loader = PyMuPDFLoader(path)
-            elif ext == "docx":
-                loader = Docx2txtLoader(path)
-            else:
-                continue
-            docs = loader.load()
-            documents.extend(docs)
-        except Exception as e:
-            print(f"❌ Error loading {filename}: {e}")
+# Split documents into manageable chunks
+splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=50)
+chunks = splitter.split_documents(documents)
 
-    return documents
+# Create and persist Chroma vector database
+db = Chroma.from_documents(
+    documents=chunks,
+    embedding=OpenAIEmbeddings(),
+    persist_directory="vector_db"
+)
+db.persist()
 
-def create_vector_db():
-    documents = load_documents("data/guidelines/")
-
-    splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=50)
-    chunks = splitter.split_documents(documents)
-
-    db = FAISS.from_documents(chunks, OpenAIEmbeddings())
-    db.save_local("vector_db")
-    print(f"✅ Vector DB created with {len(chunks)} chunks from {len(documents)} documents.")
+print(f"\n✅ Chroma vector DB created with {len(chunks)} chunks from {len(os.listdir(directory))} files.")

@@ -1,80 +1,62 @@
 import streamlit as st
 import os
-from query_engine import answer
-from retriever import create_vector_db
+from dotenv import load_dotenv
+from langchain_community.document_loaders import UnstructuredPDFLoader, UnstructuredWordDocumentLoader, TextLoader
+from langchain_community.vectorstores import Chroma
+from langchain_openai import OpenAIEmbeddings, ChatOpenAI
+from langchain.chains import RetrievalQA
 
-# 🩺 Configuration de la page
-st.set_page_config(page_title="Medical RAG Assistant", page_icon="🩺", layout="centered")
+# Load environment variables
+load_dotenv()
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
-# 💊 En-tête personnalisé
-st.markdown(
-    """
-    <div style='text-align: center;'>
-        <h1 style='color:#2c3e50;'>🩺 Medical Assistant (RAG-based)</h1>
-        <p style='font-size: 1.1em; color:#4d4d4d;'>
-            Ask clinical questions based <b>only</b> on your uploaded medical documents.<br>
-            Uses <span style='color:#3498db;'>Retrieval-Augmented Generation (RAG)</span> with OpenAI & LangChain.
-        </p>
-    </div>
-    """,
-    unsafe_allow_html=True
-)
+st.set_page_config(page_title="Medical RAG Assistant", page_icon="🩺")
 
-st.markdown("---")
+st.title("🩺 Medical RAG Assistant")
+st.write("Upload a medical document (PDF, DOCX, or TXT) and ask questions based on its content.")
 
-# 📂 Upload des documents
-st.subheader("📁 Upload your medical documents")
-st.caption("Accepted formats: `.txt`, `.pdf`, `.docx`")
+uploaded_file = st.file_uploader("Upload your medical document", type=["pdf", "docx", "txt"])
 
-uploaded_files = st.file_uploader(
-    label="Upload or drag medical files here",
-    type=["txt", "pdf", "docx"],
-    accept_multiple_files=True,
-    label_visibility="collapsed"
-)
+if uploaded_file is not None:
+    file_path = os.path.join("temp_docs", uploaded_file.name)
+    os.makedirs("temp_docs", exist_ok=True)
+    with open(file_path, "wb") as f:
+        f.write(uploaded_file.getbuffer())
 
-if uploaded_files:
-    os.makedirs("data/guidelines/", exist_ok=True)
-    for file in uploaded_files:
-        file_path = os.path.join("data/guidelines", file.name)
-        with open(file_path, "wb") as f:
-            f.write(file.read())
-    st.success(f"✅ {len(uploaded_files)} file(s) uploaded successfully.")
+    # Choose loader based on file type
+    if uploaded_file.name.endswith(".pdf"):
+        loader = UnstructuredPDFLoader(file_path)
+    elif uploaded_file.name.endswith(".docx"):
+        loader = UnstructuredWordDocumentLoader(file_path)
+    elif uploaded_file.name.endswith(".txt"):
+        loader = TextLoader(file_path)
+    else:
+        st.error("Unsupported file type.")
+        st.stop()
 
-    with st.spinner("🔄 Updating medical database..."):
-        create_vector_db()
-    st.success("✅ Medical knowledge base updated.")
+    st.info("Processing document...")
+    docs = loader.load()
 
-st.markdown("---")
+    # Split into chunks
+    from langchain_text_splitters import RecursiveCharacterTextSplitter
+    text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
+    chunks = text_splitter.split_documents(docs)
 
-# 💬 Zone de question
-st.subheader("💬 Ask your question")
-show_sources = st.checkbox("📄 Show source documents", value=False)
+    # Create vector database
+    db = Chroma.from_documents(chunks, OpenAIEmbeddings())
 
-question = st.text_input("Your question:", placeholder="e.g. What is the treatment for hypertension?")
+    # Prepare retrieval chain
+    qa_chain = RetrievalQA.from_chain_type(
+        llm=ChatOpenAI(model_name="gpt-3.5-turbo", temperature=0, openai_api_key=OPENAI_API_KEY),
+        chain_type="stuff",
+        retriever=db.as_retriever()
+    )
 
-if question:
-    with st.spinner("🔍 Searching medical documents..."):
-        response = answer(question)
+    st.success("✅ Document processed. You can now ask your question.")
 
-        if isinstance(response, dict):
-            st.success(response.get("result", "No answer found."))
-            if show_sources:
-                st.markdown("### 🧾 Source documents")
-                for doc in response.get("source_documents", []):
-                    st.markdown(f"• *{doc.metadata.get('source', 'Unknown')}*")
-        else:
-            st.success(response)
+    question = st.text_input("Ask your medical question:")
 
-# ✅ Footer
-st.markdown("---")
-st.markdown(
-    """
-    <div style='text-align: center; font-size: 0.9em; color: #555555;'>
-        Made by <strong>Shiraze Chebira</strong>, 2025<br>
-        Powered by <a href='https://openai.com' target='_blank'>OpenAI</a> & 
-        <a href='https://www.langchain.com/' target='_blank'>LangChain</a> ⚡
-    </div>
-    """,
-    unsafe_allow_html=True
-)
+    if question:
+        answer = qa_chain.run(question)
+        st.write("### Answer:")
+        st.write(answer)

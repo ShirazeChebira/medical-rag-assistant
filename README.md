@@ -1,58 +1,77 @@
-# 🧬 Medical RAG Assistant
+# 🧠 Medical-RAG Assistant
 
-This project is a **medical assistant powered by Retrieval-Augmented Generation (RAG)** using OpenAI's GPT-3.5 and a vector database of medical documents.
-
-It allows you to ask clinical or health-related questions, and it answers **only based on your own uploaded medical files**, with reliable and transparent behavior.
-
----
+This project is an **AI-powered medical assistant** that allows you to upload medical documents (PDF, DOCX, or TXT) and ask questions based on their content using a Retrieval Augmented Generation (RAG) architecture.
 
 ## 🚀 Features
 
-- ✅ Medical Q&A with GPT-3.5 via RAG
-- 📁 Custom document ingestion (vectorized with FAISS)
-- 💬 Local chatbot interface using Streamlit
-- 🌍 Supports multiple languages (English by default)
-- 🔐 API key loaded securely via `.env`
+* Upload medical PDFs, Word (DOCX) and text files
+* Extracts and indexes content locally using Unstructured, Poppler and Tesseract
+* Semantic search using OpenAI embeddings and Chroma vector database
+* Ask natural language questions and receive answers strictly based on the uploaded documents
+* Local processing — data privacy preserved
 
----
+## 🛠️ Requirements
 
-## 📦 Technologies used
+* Python 3.11+
+* Poppler installed and added to PATH
+* Tesseract installed and added to PATH
+* OpenAI API key
 
-- [Python](https://www.python.org/)
-- [OpenAI API](https://platform.openai.com/)
-- [LangChain](https://www.langchain.com/)
-- [FAISS](https://github.com/facebookresearch/faiss)
-- [Streamlit](https://streamlit.io/)
+## ⚙ Installation
 
----
+1️⃣ Clone the repository:
 
-## ⚙️ How to run locally
-
-```bash
-# Clone this repository
-git clone https://github.com/yourusername/medical-rag-assistant
+```
+git clone https://github.com/your-username/medical-rag-assistant.git
 cd medical-rag-assistant
+```
 
-# Install dependencies
+2️⃣ Create and activate virtual environment:
+
+```
+python -m venv venv
+venv\Scripts\activate  # on Windows
+```
+
+3️⃣ Install dependencies:
+
+```
 pip install -r requirements.txt
+```
 
-# Set your OpenAI API key in a .env file
-echo OPENAI_API_KEY=sk-xxxxxxxxxxxxxxxxxxxxxxxx > .env
+## 🔑 API Key
 
-# Create the vector database
-python retriever.py
+Create a file `.env` at the root of the project:
 
-# Run the chatbot UI
+```
+OPENAI_API_KEY=your-openai-key-here
+```
+
+Or set it as environment variable before launching.
+
+## 📂 Install Poppler
+
+* Download Poppler for Windows:
+  [https://github.com/oschwartz10612/poppler-windows/releases](https://github.com/oschwartz10612/poppler-windows/releases)
+* Unzip and add `poppler-xx\Library\bin` to your PATH system variable.
+
+## 📂 Install Tesseract OCR
+
+* Download Tesseract OCR for Windows:
+  [https://github.com/UB-Mannheim/tesseract/wiki](https://github.com/UB-Mannheim/tesseract/wiki)
+* Install and ensure `C:\Program Files\Tesseract-OCR` is in your PATH.
+
+## 🏃‍♂️ Run the app
+
+```
 streamlit run app.py
+```
+
+## ⚠ Limitations
+
+* This app is for educational and research purposes only.
+* It is not intended for clinical use or medical decision-making.
 
 ## 📄 License
 
-This project is for **educational and research purposes only**.  
-It is **not intended for clinical use or patient decision-making**.
-
----
-
-## 👩‍💻 Author
-
-Made by **Shiraze Chebira**, 2025  
-Powered by [OpenAI](https://openai.com/) & [LangChain](https://www.langchain.com/)
+Made by **Shiraze Chebira** - 2025 ❤️
